@@ -210,7 +210,7 @@ function App() {
         </section>
       )} */}
       {/* <RenderPractice /> */}
-      hi
+      his
       <UserList />
     </main>
   )
