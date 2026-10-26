@@ -1,0 +1,236 @@
+Yes, Ajith! 💯 That's exactly the behavior useDeferredValue is designed to enable. You've understood the practical difference.
+============================================================
+USE DEFFERED VALUE
+============================================================
+
+  const [inputValue, setInputValue] = useState('')
+  const deferredSearch = useDeferredValue(inputValue)
+  const filteredUsers = useMemo(() => {
+  const normalizedSearch = deferredSearch.trim().toLowerCase()
+    return data.filter((user) =>      	user.searchName.includes(normalizedSearch))
+  }, [data, deferredSearch])
+
+
+Let's use your 50,000-record example.
+Without useDeferredValue
+You type A → Aj → Aji.
+Input:    A ── Aj ── Aji
+Results:  A ── Aj ── Aji
+          ↓     ↓     ↓
+        Render Render Render
+
+
+If rendering each result list is expensive, React may struggle to keep up with typing, making the input feel glitchy.
+With useDeferredValue
+Input:    A ── Aj ── Aji     ← updates immediately
+Results:  A ───────── Aji    ← may skip intermediate results
+
+
+Here's what's happening:
+1. You type A. React renders the input and results for A.
+2. You quickly type j, making the input Aj. React can prioritize updating the input while deferring the expensive results update.
+3. Before React finishes rendering results for Aj, you type i. React can abandon that outdated background render and work on results for Aji instead.
+So the user may see results for A, followed directly by results for Aji, without ever seeing results for Aj.
+One technical clarification: React doesn't guarantee that intermediate results will be skipped. It depends on rendering cost and typing speed.
+The key takeaway
+- useDeferredValue can keep typing responsive while expensive results rendering catches up.
+- It does not reduce the number of API calls automatically.
+- It does not guarantee a delay or guarantee that results for Aj will be skipped.
+You've got the right mental model now: the input stays current, while React is allowed to prioritize it over rendering stale search results.
+============================================================
+
+For search, I prefer `useDeferredValue` because the input should update immediately when the user types, but the search results can update a little later. For example, if we have 50,000 records, rendering the results on every keystroke can make the UI feel slow. So, we can defer the value used for rendering the results, allowing React to prioritize the input.
+
+For tab switching, I prefer `useTransition` because I can mark the state update that changes the tab as a non-urgent update. React can then prioritize more urgent interactions while rendering the new tab content.
+
+So basically, `useDeferredValue` is useful when I want an expensive UI to catch up with a changing value, whereas `useTransition` is useful when I want to mark a particular state update as non-urgent.
+
+============================================================
+Create Root
+============================================================
+In React 18, `ReactDOM.render()` was replaced by `createRoot()` as the modern root API.
+
+The main advantage is that `createRoot()` enables the new React rendering capabilities, including automatic batching and concurrent rendering features.
+
+For example, automatic batching groups multiple state updates into fewer renders, even when the updates happen inside promises or setTimeout. It also enables features like `useTransition` and `useDeferredValue` to help React prioritize urgent UI updates over less urgent rendering work.
+
+So, `createRoot()` is not just a replacement for the old syntax. It enables the modern rendering behavior introduced in React 18.
+============================================================
+Concurrent Rendering
+============================================================
+Concurrent rendering is React's capability to schedule and prioritize rendering work. It allows React to pause or abandon non-urgent rendering work when necessary so that urgent user interactions can remain responsive. So, for example, typing in a search box, you want the typing to stay fast. But the list can update later. That's the practical difference.
+============================================================
+SSR — Server-Side Rendering
+============================================================
+The server renders the HTML first. ----> Browser displays the HTML -----> JavaScript hydrates it to make it interactive (when applicable).
+
+
+When HTML already exists from SSR, React uses hydration to attach its interactive behavior using hydrateRoot().
+
+============================================================
+2. CSR — Client-Side Rendering
+============================================================
+Browser loads the HTML with the root element ----->
+
+For example, div id="root"  --------> JavaScript loads and React renders the components into the root.
+
+React doesn't attach an already-rendered component to the root in the usual CSR flow. It renders the component tree into the root using createRoot().
+============================================================
+How SSR IN React  works
+============================================================
+Step 1 — Server: Render the component into HTML.
+const html = renderToString(<App />);
+
+
+Step 2 — Server: Send that HTML to the browser in an HTTP response.
+
+Step 3 — Browser: Hydrate the existing HTML to make it interactive.
+hydrateRoot(document.getElementById('root'), <App />);
+============================================================
+Do you need a backend developer to implement SSR?”
+============================================================
+Not necessarily. SSR requires a server-side setup, but a frontend developer can implement it using Node.js and React, or use a framework like Next.js that handles much of the setup.
+============================================================
+
+useMemo, useCallback,memo 
+============================================================
+useMemo → caches a value.
+
+useCallback → caches a function reference.
+
+memo → can skip a component's re-render when its props haven't changed.
+
+-------------------------------
+
+const total = useMemo(() => a + b, [a, b]);
+
+const handleSave = useCallback(() => {
+  saveData(total);
+}, [total]);
+
+-------------------------------
+What if a or b changes but total stays the same?
+For example, a = 10, b = 20 becomes a = 15, b = 15.
+
+The inputs changed, so useMemo recalculates total. But the result remains 30.
+
+In this case:
+- useMemo recalculates the value.
+- useCallback sees that total is still 30.
+- The handleSave reference can remain the same.
+
+useCallback returns a cached function reference until one of its dependencies changes. If total changes, the reference changes; if total stays the same, React can reuse the previous reference.
+============================================================
+Profiler and components tab uses
+============================================================
+Profiler: Identify which components rendered during an interaction.
+
+
+
+Components: Inspect their props, state, and context to investigate possible causes.
+
+
+
+Optimise: Use React.memo, useMemo, useCallback, or move state closer to where it's needed—only when appropriate.
+
+
+
+Profiler again: Verify whether the optimisation helped.
+
+-------------------------------
+Commits — identify recorded React updates.
+
+
+
+Flamegraph — see which components rendered.
+
+
+
+Render duration — understand how much time React spent rendering.
+
+-------------------------------
+I use React DevTools Profiler to reproduce the interaction, identify which components render, inspect their render duration, and investigate changing props, state, or context. Then I apply optimisations only where needed and profile again to verify the improvement.
+============================================================
+Virtualisation
+============================================================
+It is a technique it renders only the items that are able to show in the screen or given space . 
+Lets say we have 10k records is loaded but if we render them in dom it feels lag , and we have table container of height 400 px , this virtualisation only render the number of records plus few records in that given space . If you check the dom only that thing is attached to the dom not the entire data.
+
+steps 
+npm install react-window
+-------------------------------
+
+sample component 
+
+import { List } from "react-window";
+
+const users = Array.from({ length: 10000 }, (_, index) => ({
+  id: index + 1,
+  name: `User ${index + 1}`,
+  email: `user${index + 1}@example.com`,
+}));
+
+function UserRow({ index, style }) {
+  const user = users[index];
+
+  return (
+    <div style={style}>			
+      <strong>{user.name}</strong>
+      <p>{user.email}</p>
+    </div>
+  );
+}
+
+export default function VirtualizationPractice() {
+  return (
+    <List
+      rowComponent={UserRow}
+      rowCount={users.length}
+      rowHeight={60}
+      rowProps={{}}
+      style={{ height: 400, width: "100%" }}    // the react window calculate the style and the indexes and the let the component attach items that are 						//viible 
+    />
+  );
+}
+
+============================================================
+Virtualisation is different from Pagination 
+============================================================
+
+
+
+In pagination we can get specific set of data like page 1 data , 20 rows , data starts with 'a' like that but virtualisation is focused only on rendering those filtered data.
+
+
+
+============================================================
+
+
+============================================================
+use()
+============================================================
+`useEffect` is used to call the API and handle the loading and error states manually.
+
+But in `use()`, we pass the Promise to the component, and `use()` reads the Promise and gives us the resolved data.
+
+If the Promise is pending, Suspense shows the fallback UI. If the Promise fails, the Error Boundary shows the fallback UI. If the Promise is completed successfully, it returns the data, and we can use it in our component.
+
+So, `use()` is mainly used for reading a Promise, and the Promise should be created somewhere else and passed to it.
+
+sample code 
+import { use } from 'react';
+
+function Users({ usersPromise }) {
+  const users = use(usersPromise);
+
+  return (
+    <ul>
+      {users.map((user) => (
+        <li key={user.id}>{user.name}</li>
+      ))}
+    </ul>
+  );
+}
+
+export default Users;
+============================================================

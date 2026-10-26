@@ -6,11 +6,13 @@ import {
   useMemo,
   useState,
   useTransition,
+  Suspense,
 } from 'react'
 import './App.css'
 import RenderPractice from './RenderPractice'
 import UserList from './VirtualizationPractice'
-
+import ApiFetchingDemo from './UseHookDemo';
+import UseHookDemo from './UseHookDemo';
 
 const RESULT_LIMIT = 100
 const TRANSITION_PREVIEW_COUNT = 2500
@@ -103,6 +105,22 @@ function App() {
     startTransition(() => {
       setActiveTab(tab)
     })
+  }
+  // use hook use() Demo
+  const [usersPromise, setUsersPromise] = useState(null)
+  function fetchUsers() {
+    return fetch('https://jsonplaceholder.typicode.com/users')
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch users');
+        }
+
+        return response.json();
+      });
+  }
+  function handleOK() {
+    const promise = fetchUsers();
+    setUsersPromise(promise);
   }
 
   return (
@@ -210,7 +228,16 @@ function App() {
         </section>
       )} */}
       {/* <RenderPractice /> */}
-      his
+      <h1>Fetch Users Demo</h1>
+
+      <button onClick={handleOK}>OK</button>
+
+      {usersPromise && (
+        <Suspense fallback={<p>Loading users...</p>}>
+          <UseHookDemo usersPromise={usersPromise} />
+        </Suspense>
+      )}
+
       <UserList />
     </main>
   )
